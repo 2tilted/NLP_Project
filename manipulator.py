@@ -22,7 +22,7 @@ for pol in range(len(prediction)):
         test_text_neg.append(test_text[pol])
 
 def create_tf_idf_matrix(documents):
-    vectorizer = TfidfVectorizer(ngram_range=(1,3))
+    vectorizer = TfidfVectorizer(ngram_range=(1,1))
     tf_idf_matrix = vectorizer.fit_transform(documents)
     scores = zip(vectorizer.get_feature_names(),
                      np.asarray(tf_idf_matrix.sum(axis=0)).ravel())
@@ -31,16 +31,39 @@ def create_tf_idf_matrix(documents):
     return sorted_scores
 
 sorted_scores_pos = create_tf_idf_matrix(test_text_pos)
-sorted_scores_pos = [i[0] for i in sorted_scores_pos]
-#sorted_scores_pos = [i[0] for i in sorted_scores_pos if nlp(i[0])[0].pos_ == 'ADJ']
+#sorted_scores_pos = [i[0] for i in sorted_scores_pos]
+sorted_scores_pos = [i[0] for i in sorted_scores_pos if nlp(i[0])[0].pos_ == 'ADJ']
 
 sorted_scores_neg = create_tf_idf_matrix(test_text_neg)
-sorted_scores_neg = [i[0] for i in sorted_scores_neg]
-#sorted_scores_neg = [i[0] for i in sorted_scores_neg if nlp(i[0])[0].pos_ == 'ADJ']
+#sorted_scores_neg = [i[0] for i in sorted_scores_neg]
+sorted_scores_neg = [i[0] for i in sorted_scores_neg if nlp(i[0])[0].pos_ == 'ADJ']
 
 for x in sorted_scores_pos[:]:
     if x in sorted_scores_neg:
         sorted_scores_neg.remove(x)
         sorted_scores_pos.remove(x)
 
-print(sorted_scores_pos)
+#for ngram in sorted_scores_pos[:]:
+ #   doc = nlp(ngram)
+  #  for token in doc:
+   #     if token.pos_ == 'NOUN' or token.pos_ == 'PROPN' or token.pos_ == 'NUM' or token.pos_ == 'SYM':
+    #        sorted_scores_pos.remove(ngram)
+     #       break
+
+print(sorted_scores_neg)
+
+
+df = pd.read_csv('./evaluation_examples.csv', sep=",", header=None)
+for sentence in range(len(df[0])):
+    for word in df[0][sentence].split():
+        if word in sorted_scores_pos:
+            s = df.at[sentence, 0]
+            s = s.replace(word,sorted_scores_neg[0])
+            print(s)
+            df.at[sentence, 0] = s
+        elif word in sorted_scores_neg:
+            s = df.at[sentence, 0]
+            s = s.replace(word,sorted_scores_pos[0])
+            print(s)
+            df.at[sentence, 0] = s
+df.to_csv('copy_of_' + 'evaluation_examples.csv', index=False, header=None)
