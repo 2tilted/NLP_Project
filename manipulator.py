@@ -1,7 +1,7 @@
 import classifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-import pandas as pd
 import numpy as np
+import pandas as pd
 import spacy
 
 nlp = spacy.load("en_core_web_sm")
@@ -22,20 +22,25 @@ for pol in range(len(prediction)):
         test_text_neg.append(test_text[pol])
 
 def create_tf_idf_matrix(documents):
-    vectorizer = TfidfVectorizer(stop_words='english')
+    vectorizer = TfidfVectorizer(ngram_range=(1,3))
     tf_idf_matrix = vectorizer.fit_transform(documents)
     scores = zip(vectorizer.get_feature_names(),
                      np.asarray(tf_idf_matrix.sum(axis=0)).ravel())
     sorted_scores = sorted(scores, key=lambda x: x[1], reverse=True)
 
-    for item in sorted_scores:
-        print("{0:50} Score: {1}".format(item[0], item[1]))
-
     return sorted_scores
 
-#create_tf_idf_matrix(test_text_pos)
-#create_tf_idf_matrix(test_text_neg)
+sorted_scores_pos = create_tf_idf_matrix(test_text_pos)
+sorted_scores_pos = [i[0] for i in sorted_scores_pos]
+#sorted_scores_pos = [i[0] for i in sorted_scores_pos if nlp(i[0])[0].pos_ == 'ADJ']
 
-sorted_scores = create_tf_idf_matrix(test_text_pos)
-#sorted_scores = [i[0] for i in sorted_scores if nlp(i[0])[0].pos_ == 'VERB']
-#print(sorted_scores)
+sorted_scores_neg = create_tf_idf_matrix(test_text_neg)
+sorted_scores_neg = [i[0] for i in sorted_scores_neg]
+#sorted_scores_neg = [i[0] for i in sorted_scores_neg if nlp(i[0])[0].pos_ == 'ADJ']
+
+for x in sorted_scores_pos[:]:
+    if x in sorted_scores_neg:
+        sorted_scores_neg.remove(x)
+        sorted_scores_pos.remove(x)
+
+print(sorted_scores_pos)
