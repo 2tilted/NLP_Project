@@ -3,6 +3,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import pandas as pd
 import spacy
+import itertools
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -10,19 +11,26 @@ test_file = "./evaluation_examples.csv"
 test_data = classifier.load_data(test_file)
 test_text = test_data[0]
 
-prediction = classifier.classify(test_text, './polarity_classifier.sav')
+polarity_prediction = classifier.classify(test_text, './polarity_classifier.sav')
+domain_prediction = classifier.classify(test_text, './domain_classifier.sav')
 
-test_text_pos = []
-test_text_neg = []
+test_text_0_3 = []
+test_text_1_3 = []
+test_text_0_4 = []
+test_text_1_4 = []
 
-for pol in range(len(prediction)):
-    if prediction[pol] == 3:
-        test_text_pos.append(test_text[pol])
-    if prediction[pol] == 4:
-        test_text_neg.append(test_text[pol])
+for pol in range(len(polarity_prediction)):
+    if domain_prediction[pol] == 0 and polarity_prediction[pol] == 3:
+        test_text_0_3.append(test_text[pol])
+    elif domain_prediction[pol] == 1 and polarity_prediction[pol] == 3:
+        test_text_1_3.append(test_text[pol])
+    elif domain_prediction[pol] == 0 and polarity_prediction[pol] == 4:
+        test_text_0_4.append(test_text[pol])
+    else:
+        test_text_1_4.append(test_text[pol])
 
 def create_tf_idf_matrix(documents):
-    vectorizer = TfidfVectorizer(ngram_range=(1,1))
+    vectorizer = TfidfVectorizer(ngram_range=(1,3))
     tf_idf_matrix = vectorizer.fit_transform(documents)
     scores = zip(vectorizer.get_feature_names(),
                      np.asarray(tf_idf_matrix.sum(axis=0)).ravel())
@@ -30,40 +38,84 @@ def create_tf_idf_matrix(documents):
 
     return sorted_scores
 
-sorted_scores_pos = create_tf_idf_matrix(test_text_pos)
-#sorted_scores_pos = [i[0] for i in sorted_scores_pos]
-sorted_scores_pos = [i[0] for i in sorted_scores_pos if nlp(i[0])[0].pos_ == 'ADJ']
+sorted_scores_0_3 = create_tf_idf_matrix(test_text_0_3)
+sorted_scores_1_3 = create_tf_idf_matrix(test_text_1_3)
+sorted_scores_0_4 = create_tf_idf_matrix(test_text_0_4)
+sorted_scores_1_4 = create_tf_idf_matrix(test_text_1_4)
 
-sorted_scores_neg = create_tf_idf_matrix(test_text_neg)
-#sorted_scores_neg = [i[0] for i in sorted_scores_neg]
-sorted_scores_neg = [i[0] for i in sorted_scores_neg if nlp(i[0])[0].pos_ == 'ADJ']
+#sorted_scores_0_3 = [i[0] for i in sorted_scores_0_3]
+#sorted_scores_1_3 = [i[0] for i in sorted_scores_1_3]
+#sorted_scores_0_4 = [i[0] for i in sorted_scores_0_4]
+#sorted_scores_1_4 = [i[0] for i in sorted_scores_1_4]
 
-for x in sorted_scores_pos[:]:
-    if x in sorted_scores_neg:
-        sorted_scores_neg.remove(x)
-        sorted_scores_pos.remove(x)
+
+def filter_polarity(pos_list, neg_list):
+    for word in neg_list[:]:
+        tmp = [item for item in pos_list if item[0] == word[0]]
+        if(len(tmp) == 1):
+            q = tmp[0][1]/word[1]
+            if(q < .75):
+                pos_list.remove(tmp[0])
+            elif(q > 1.25):
+                neg_list.remove(word)
+            else:
+                pos_list.remove(tmp[0])
+                neg_list.remove(word)
+
+filter_polarity(sorted_scores_0_3, sorted_scores_0_4)
+filter_polarity(sorted_scores_1_3, sorted_scores_1_4)
+
+#for x in sorted_scores_pos[:]:
+#    if x in sorted_scores_neg:
+#        sorted_scores_neg.remove(x)
+#        sorted_scores_pos.remove(x)
 
 #for ngram in sorted_scores_pos[:]:
  #   doc = nlp(ngram)
   #  for token in doc:
-   #     if token.pos_ == 'NOUN' or token.pos_ == 'PROPN' or token.pos_ == 'NUM' or token.pos_ == 'SYM':
+   #     if token.pos_ == 'NOUN' or token.pos_ == 'PROPN' or token.pos_ == 'NUM' or token.pos_ == 'SYM': py
     #        sorted_scores_pos.remove(ngram)
      #       break
 
-print(sorted_scores_neg)
+"""
+print("electronic positives:")
+print(sorted_scores_0_3)
+print("\nkitchen positives:")
+print(sorted_scores_1_3)
+print("\nelectronic negatives:")
+print(sorted_scores_0_4)
+print("\nkitchen negatives:")
+print(sorted_scores_1_4)
+"""
 
+sorted_scores_0_3 = [i[0] for i in sorted_scores_0_3]
+sorted_scores_1_3 = [i[0] for i in sorted_scores_1_3]
+sorted_scores_0_4 = [i[0] for i in sorted_scores_0_4]
+sorted_scores_1_4 = [i[0] for i in sorted_scores_1_4]
 
 df = pd.read_csv('./evaluation_examples.csv', sep=",", header=None)
 for sentence in range(len(df[0])):
     for word in df[0][sentence].split():
-        if word in sorted_scores_pos:
+        if word in sorted_scores_0_3:
             s = df.at[sentence, 0]
-            s = s.replace(word,sorted_scores_neg[0])
+            s = s.replace(word,sorted_scores_0_4[0])
             print(s)
             df.at[sentence, 0] = s
-        elif word in sorted_scores_neg:
+        elif word in sorted_scores_0_4:
             s = df.at[sentence, 0]
-            s = s.replace(word,sorted_scores_pos[0])
+            s = s.replace(word,sorted_scores_0_3[0])
             print(s)
             df.at[sentence, 0] = s
+        elif word in sorted_scores_1_3:
+            s = df.at[sentence, 0]
+            s = s.replace(word, sorted_scores_1_4[0])
+            print(s)
+            df.at[sentence, 0] = s
+        elif word in sorted_scores_1_4:
+            s = df.at[sentence, 0]
+            s = s.replace(word, sorted_scores_1_4[0])
+            print(s)
+            df.at[sentence, 0] = s
+        else:
+            print("nothing found")
 df.to_csv('copy_of_' + 'evaluation_examples.csv', index=False, header=None)
