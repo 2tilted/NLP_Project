@@ -36,6 +36,7 @@ def calculate_polarity(test_file):
 
 if __name__ == '__main__':
 
-    test = "./copy_of_evaluation_examples.csv"
-    calculate_domain(test)
-    calculate_polarity(test)
+    test_old = "./evaluation_examples.csv"
+    test_new = "./copy_of_evaluation_examples.csv"
+    calculate_domain(test_new)
+    calculate_polarity(test_new)
