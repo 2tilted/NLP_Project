@@ -44,20 +44,14 @@ sorted_scores_1_3 = create_tf_idf_matrix(test_text_1_3)
 sorted_scores_0_4 = create_tf_idf_matrix(test_text_0_4)
 sorted_scores_1_4 = create_tf_idf_matrix(test_text_1_4)
 
-#sorted_scores_0_3 = [i[0] for i in sorted_scores_0_3]
-#sorted_scores_1_3 = [i[0] for i in sorted_scores_1_3]
-#sorted_scores_0_4 = [i[0] for i in sorted_scores_0_4]
-#sorted_scores_1_4 = [i[0] for i in sorted_scores_1_4]
-
-
 def filter_polarity(pos_list, neg_list):
     for word in neg_list[:]:
         tmp = [item for item in pos_list if item[0] == word[0]]
         if len(tmp) == 1:
             q = tmp[0][1]/word[1]
-            if q < .75:
+            if q < .2:
                 pos_list.remove(tmp[0])
-            elif q > 1.25:
+            elif q > 5:
                 neg_list.remove(word)
             else:
                 pos_list.remove(tmp[0])
@@ -102,8 +96,6 @@ replacement_dict_3 = {i : sorted_scores_1_3[0] for i in sorted_scores_1_4}
 replacement_dict.update(replacement_dict_1)
 replacement_dict.update(replacement_dict_2)
 replacement_dict.update(replacement_dict_3)
-
-print(replacement_dict)
 
 def multi_replace_regex(string, replacements, ignore_case=False):
     rep_sorted = sorted(replacements, key=len, reverse=True)
