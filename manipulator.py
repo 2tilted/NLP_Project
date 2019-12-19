@@ -4,6 +4,7 @@ from sklearn.utils.sparsefuncs import csc_median_axis_0
 import numpy as np
 import pandas as pd
 import spacy
+import re
 import pickle
 import itertools
 
@@ -46,20 +47,15 @@ sorted_scores_1_3 = create_tf_idf_matrix(test_text_1_3)
 sorted_scores_0_4 = create_tf_idf_matrix(test_text_0_4)
 sorted_scores_1_4 = create_tf_idf_matrix(test_text_1_4)
 
-#sorted_scores_0_3 = [i[0] for i in sorted_scores_0_3]
-#sorted_scores_1_3 = [i[0] for i in sorted_scores_1_3]
-#sorted_scores_0_4 = [i[0] for i in sorted_scores_0_4]
-#sorted_scores_1_4 = [i[0] for i in sorted_scores_1_4]
-
-
 def filter_polarity(pos_list, neg_list):
     for word in neg_list[:]:
         tmp = [item for item in pos_list if item[0] == word[0]]
-        if(len(tmp) == 1):
+        if len(tmp) == 1:
             q = tmp[0][1]/word[1]
-            if(q < .75): #the ngram has negative polarity
+
+            if q < .2: #the ngram has negative polarity
                 pos_list.remove(tmp[0])
-            elif(q > 1.25): #the ngram has positive polarity
+            elif q > 5: #the ngram has positive polarity
                 neg_list.remove(word)
             else: #the ngram is neutral
                 pos_list.remove(tmp[0])
@@ -94,28 +90,46 @@ sorted_scores_1_3 = [i[0] for i in sorted_scores_1_3]
 sorted_scores_0_4 = [i[0] for i in sorted_scores_0_4]
 sorted_scores_1_4 = [i[0] for i in sorted_scores_1_4]
 
-df = test_data
 
 vectorizer = TfidfVectorizer()
 analyzer = vectorizer.build_analyzer()
 preprocessor = vectorizer.build_preprocessor()
 
-for sentence_idx in range(len(df[0])):
-    for word in df[0][sentence_idx].split():
+replacement_dict = {i : sorted_scores_0_4[0] for i in sorted_scores_0_3}
+replacement_dict_1 = {i : sorted_scores_0_3[0] for i in sorted_scores_0_4}
+replacement_dict_2 = {i : sorted_scores_1_4[0] for i in sorted_scores_1_3}
+replacement_dict_3 = {i : sorted_scores_1_3[0] for i in sorted_scores_1_4}
+
+replacement_dict.update(replacement_dict_1)
+replacement_dict.update(replacement_dict_2)
+replacement_dict.update(replacement_dict_3)
+
+def multi_replace_regex(string, replacements, ignore_case=False):
+    rep_sorted = sorted(replacements, key=len, reverse=True)
+    rep_escaped = map(re.escape, rep_sorted)
+    pattern = re.compile("|".join(rep_escaped))
+    return pattern.sub(lambda match: replacements[match.group(0)], string)
+
+df = pd.read_csv('./evaluation_examples.csv', sep=",", header=None)
+
+for sentence in range(len(df[0])):
+    s = df.at[sentence, 0]
+    s = multi_replace_regex(s, replacement_dict)
+    df.at[sentence, 0] = s
+"""
+for sentence in range(len(df[0])):
+    for word in df[0][sentence].split():
         if word in sorted_scores_0_3:
-            s = df.at[sentence_idx, 0]
+            s = df.at[sentence, 0]
             s = s.replace(word, sorted_scores_0_4[0])
-            if len(word.split()) > 1:
-                print("BIGRAM \n")
-            #print(s)
-            df.at[sentence_idx, 0] = s
+            print(s)
+            df.at[sentence, 0] = s
         elif word in sorted_scores_0_4:
-            s = df.at[sentence_idx, 0]
+            s = df.at[sentence, 0]
             s = s.replace(word, sorted_scores_0_3[0])
-            if len(word.split()) > 1:
-                print("BIGRAM \n")
-            #print(s)
-            df.at[sentence_idx, 0] = s
+            print(s)
+            df.at[sentence, 0] = s
+
         elif word in sorted_scores_1_3:
             s = df.at[sentence_idx, 0]
             s = s.replace(word, sorted_scores_1_4[0])
@@ -132,4 +146,6 @@ for sentence_idx in range(len(df[0])):
             df.at[sentence_idx, 0] = s
         #else:
             #print("nothing found")
+"""
+
 df.to_csv('copy_of_' + 'evaluation_examples.csv', index=False, header=None)
