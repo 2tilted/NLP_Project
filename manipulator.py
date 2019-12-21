@@ -33,11 +33,12 @@ for idx in range(len(polarity_prediction)):
         test_text_1_4.append(test_text[idx])
 
 
-vectorizer = TfidfVectorizer(ngram_range=(1,2))
+vectorizer = TfidfVectorizer(ngram_range=(1,3))
 def create_tf_idf_matrix(documents):
     tf_idf_matrix = vectorizer.fit_transform(documents)
     scores = zip(vectorizer.get_feature_names(),
                      np.asarray(tf_idf_matrix.sum(axis=0)).ravel())
+
     sorted_scores = sorted(scores, key=lambda x: x[1], reverse=True)
 
     return sorted_scores
@@ -90,11 +91,6 @@ sorted_scores_1_3 = [i[0] for i in sorted_scores_1_3]
 sorted_scores_0_4 = [i[0] for i in sorted_scores_0_4]
 sorted_scores_1_4 = [i[0] for i in sorted_scores_1_4]
 
-
-vectorizer = TfidfVectorizer()
-analyzer = vectorizer.build_analyzer()
-preprocessor = vectorizer.build_preprocessor()
-
 replacement_dict = {i : sorted_scores_0_4[0] for i in sorted_scores_0_3}
 replacement_dict_1 = {i : sorted_scores_0_3[0] for i in sorted_scores_0_4}
 replacement_dict_2 = {i : sorted_scores_1_4[0] for i in sorted_scores_1_3}
@@ -104,18 +100,20 @@ replacement_dict.update(replacement_dict_1)
 replacement_dict.update(replacement_dict_2)
 replacement_dict.update(replacement_dict_3)
 
-def multi_replace_regex(string, replacements, ignore_case=False):
-    rep_sorted = sorted(replacements, key=len, reverse=True)
-    rep_escaped = map(re.escape, rep_sorted)
-    pattern = re.compile("|".join(rep_escaped))
-    return pattern.sub(lambda match: replacements[match.group(0)], string)
 
 df = pd.read_csv('./evaluation_examples.csv', sep=",", header=None)
 
+preprocessor = vectorizer.build_preprocessor()
+
+rep_sorted = sorted(replacement_dict, key=len, reverse=True)
+pattern = re.compile('|'.join(r'\b%s\b' % re.escape(s) for s in rep_sorted))
+
 for sentence in range(len(df[0])):
     s = df.at[sentence, 0]
-    s = multi_replace_regex(s, replacement_dict)
+    s = preprocessor(s)
+    s = pattern.sub(lambda match: replacement_dict[match.group(0)], s)
     df.at[sentence, 0] = s
+
 """
 for sentence in range(len(df[0])):
     for word in df[0][sentence].split():
